@@ -1,12 +1,23 @@
 import random
 import string
+import os
 import socketio
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 app = FastAPI()
 socket_app = socketio.ASGIApp(sio, app)
 
+# 🎯 เสิร์ฟไฟล์ Static (css, js, mp3 ฯลฯ) และหน้า index.html เมื่อเข้า URL หน้าแรก
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse("index.html")
+
+# --- โค้ดส่วนอื่นๆ คงไว้เหมือนเดิม ---
 NOTES = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4']
 SUITS = ['♥', '♠', '♣', '♦']
 
@@ -73,7 +84,6 @@ async def join_room(sid, data):
     room = rooms[room_id]
     await sio.enter_room(sid, room_id)
     
-    # เพิ่มผู้เล่นใหม่เข้าคิวเรื่อยๆ
     room['players'].append({
         'sid': sid,
         'name': player_name,
@@ -105,7 +115,6 @@ async def pick_card(sid, data):
     if not room:
         return
 
-    # เช็กว่าเป็นเทิร์นของผู้เล่นที่กดหรือไม่ (ในโหมด Multiplayer)
     if room['mode'] == 'multi' and room['current_turn_sid'] != sid:
         await sio.emit('error_msg', {'message': 'ยังไม่ถึงตาของคุณ!'}, room=sid)
         return
@@ -150,7 +159,6 @@ async def submit_answer(sid, data):
     removed_card_id = active_card['id']
     room['active_card'] = None
 
-    # 🎯 สลับเทิร์นไปยังผู้เล่นคนถัดไปแบบวนลูป
     if len(room['players']) > 1:
         curr_idx = next((i for i, p in enumerate(room['players']) if p['sid'] == sid), 0)
         next_idx = (curr_idx + 1) % len(room['players'])
@@ -214,7 +222,6 @@ async def trigger_game_over(room_id):
     if room['mode'] == 'single':
         winner_info = {'type': 'single', 'score': players[0]['score']}
     else:
-        # จัดอันดับหาผู้ชนะตามคะแนนสูงสุด
         sorted_players = sorted(players, key=lambda p: p['score'], reverse=True)
         if len(sorted_players) > 1 and sorted_players[0]['score'] == sorted_players[1]['score']:
             winner_info = {'type': 'draw'}
