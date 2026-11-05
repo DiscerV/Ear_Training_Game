@@ -4,507 +4,286 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ear Training Game</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-    <!-- 1. หน้าแรก Lobby -->
-    <div id="lobby-screen">
-        <div class="lobby-header">
-            <span class="headphone-icon">🎧</span>
-            <div class="lobby-title-text">EAR TRAINING GAME</div>
-        </div>
+    <div class="container">
+        <h1>🎵 EAR TRAINING GAME</h1>
 
-        <div class="lobby-main-content">
-            <div class="players-window">
-                <div class="window-header">
-                    <div class="window-title">Players</div>
-                    <div class="window-controls"><span>—</span><span>❐</span><span>✕</span></div>
-                </div>
-                <div class="window-body" id="lobby-players-list">
-                    <div class="player-item">
-                        <span id="lobby-p1-name">ชื่อผู้เล่นที่ 1</span>
-                        <span style="font-size: 12px; color: #00ff88;">(Host)</span>
-                    </div>
+        <div id="top-bar-players" class="top-bar"></div>
 
-                    <div class="qr-container-box" id="lobby-qr-box" style="display: none;">
-                        <div class="lobby-room-code-display">รหัสห้อง: <span id="lobby-room-code-text">----</span></div>
-                        <div id="qrcode"></div>
-                        <p style="font-size: 11px; color: #aaa; margin-top: 8px;">สแกนเพื่อเข้าร่วมห้องนี้</p>
-                        <button class="btn-start-game-trigger" onclick="startGameNow()">▶ START GAME</button>
-                    </div>
-                </div>
+        <div id="lobby-section" class="card-box">
+            <h3>เข้าสู่เกม</h3>
+            <div class="input-group">
+                <input type="text" id="player-name-input" placeholder="กรอกชื่อของคุณ..." maxlength="12">
+            </div>
+            
+            <div class="button-group">
+                <button onclick="startSinglePlayer()" class="btn btn-secondary">🎮 เล่นคนเดียว (Single Player)</button>
+                <button onclick="createRoom()" class="btn btn-primary">🏠 สร้างห้อง Multiplayer</button>
             </div>
 
-            <div class="lobby-actions">
-                <input type="text" id="player-name-input" class="action-input-name" placeholder="กรอกชื่อของคุณ..." value="ผู้เล่น 1" oninput="updateLobbyPlayerName()">
-                <button class="btn-single-play" onclick="startSinglePlayer()">🎮 เล่นคนเดียว (Single Player)</button>
-                <button class="btn-create-multi" onclick="createMultiplayerRoom()">🏠 สร้างห้อง Multiplayer</button>
-                
-                <div style="margin: 2px 0; color: #666; font-size: 12px; text-align: center;">- หรือ เข้าร่วมห้องเพื่อน -</div>
-                <input type="text" id="room-code-input" class="room-code-box" placeholder="กรอกรหัสห้อง 4 หลัก :" style="text-transform: uppercase;">
-                <button class="btn-join" onclick="joinMultiplayerRoom()">🔑 JOIN ROOM</button>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid rgba(255,255,255,0.1);">
+
+            <div class="input-group">
+                <input type="text" id="room-code-input" placeholder="กรอกรหัสห้อง 4 หลัก..." style="text-transform: uppercase;">
+                <button onclick="joinRoom()" class="btn btn-success">🔑 JOIN ROOM</button>
+            </div>
+        </div>
+
+        <div id="room-info-section" class="card-box" style="display: none;">
+            <h2>รหัสห้องของคุณ: <span id="display-room-code" style="color: #00ff88;">-</span></h2>
+            <p>ให้เพื่อนสแกน QR Code หรือกรอกรหัสห้องเพื่อเข้าร่วม</p>
+            <div id="qrcode-container" style="display: flex; justify-content: center; margin: 15px 0;"></div>
+            <p id="waiting-status-text" style="color: #ffd700;">กำลังรอผู้เล่นคนอื่นเข้าร่วม...</p>
+        </div>
+
+        <div id="game-board-section" style="display: none;">
+            <div id="cards-grid" class="cards-grid"></div>
+        </div>
+    </div>
+
+    <!-- Modal ตอบคำถาม -->
+    <div id="answer-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>🎵 ฟังเสียงแล้วทายว่าเป็นโน้ตอะไร?</h3>
+            <button onclick="replayCurrentNote()" class="btn btn-warning" style="margin-bottom: 15px;">🔊 ฟังอีกครั้ง</button>
+            
+            <div class="note-buttons-grid">
+                <button onclick="submitAnswer('C4')" class="btn btn-note">C (โด)</button>
+                <button onclick="submitAnswer('D4')" class="btn btn-note">D (เร)</button>
+                <button onclick="submitAnswer('E4')" class="btn btn-note">E (มี)</button>
+                <button onclick="submitAnswer('F4')" class="btn btn-note">F (ฟา)</button>
+                <button onclick="submitAnswer('G4')" class="btn btn-note">G (ซอล)</button>
+                <button onclick="submitAnswer('A4')" class="btn btn-note">A (ลา)</button>
+                <button onclick="submitAnswer('B4')" class="btn btn-note">B (ที)</button>
             </div>
         </div>
     </div>
 
-    <!-- 2. หน้ากระดานเกมหลัก -->
-    <div id="game-screen">
-        <div class="top-bar" id="top-bar-players"></div>
-
-        <div class="board-grid" id="board"></div>
-
-        <div class="game-footer-bar">
-            <span id="room-display-badge" class="room-badge"></span>
-            <span class="game-title-footer">EAR TRAINING GAME</span>
+    <!-- Modal การ์ดพิเศษ -->
+    <div id="reward-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 id="reward-title">🎉 สุ่มได้การ์ดพิเศษ!</h2>
+            <p id="reward-desc">-</p>
+            <button onclick="confirmReward()" class="btn btn-primary">ตกลง</button>
         </div>
     </div>
 
-    <!-- 3. Overlay / Popup / Victory Modal -->
-    <div class="overlay" id="overlay">
-        <div id="answer-message"></div>
-        
-        <div class="card-popup" id="active-card-ui">
-            <div class="card-corner top-left"><span id="card-rank"></span></div>
-            <div class="card-center-suit" id="card-suit">♥</div>
-            <button class="btn-replay" onclick="playSoundAgain()">🔊 ฟังอีกครั้ง</button>
-            <div class="card-corner bottom-right"><span id="card-rank-sub"></span></div>
-        </div>
-
-        <div class="reward-selection-container" id="reward-selection-ui" style="display: none;">
-            <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(0, this)">
-                <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                <h3 style="color: #ffd700;">การ์ดใบที่ 1</h3>
-                <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-            </div>
-            <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(1, this)">
-                <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                <h3 style="color: #ffd700;">การ์ดใบที่ 2</h3>
-                <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-            </div>
-            <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(2, this)">
-                <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                <h3 style="color: #ffd700;">การ์ดใบที่ 3</h3>
-                <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-            </div>
-        </div>
-
-        <div class="quiz-bar" id="quiz-bar-ui">
-            <button class="btn-note" onclick="submitGuess('C4')">C (โด)</button>
-            <button class="btn-note" onclick="submitGuess('D4')">D (เร)</button>
-            <button class="btn-note" onclick="submitGuess('E4')">E (มี)</button>
-            <button class="btn-note" onclick="submitGuess('F4')">F (ฟา)</button>
-            <button class="btn-note" onclick="submitGuess('G4')">G (ซอล)</button>
-            <button class="btn-note" onclick="submitGuess('A4')">A (ลา)</button>
-            <button class="btn-note" onclick="submitGuess('B4')">B (ที)</button>
-        </div>
-
-        <div class="victory-modal" id="victory-modal-ui" style="display: none;">
-            <div class="victory-icon">🏆</div>
-            <div class="victory-title" id="victory-title-text">🎉 GAME OVER!</div>
-            <div class="victory-scores" id="victory-scores-detail"></div>
-            <div class="btn-action-group">
-                <button class="btn-victory btn-victory-again" onclick="requestRestartGame()">🔄 เล่นอีกครั้ง</button>
-                <button class="btn-victory btn-victory-lobby" onclick="backToLobby()">🏠 เมนูหลัก</button>
-            </div>
+    <!-- Modal จบเกม -->
+    <div id="gameover-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>🏆 จบเกม!</h2>
+            <h3 id="gameover-result-text">-</h3>
+            <button onclick="restartGame()" class="btn btn-success">🔄 เล่นใหม่อีกครั้ง</button>
         </div>
     </div>
 
     <script>
-        // ปรับให้รองรับทั้ง Localhost และ Domain บน Cloud อัตโนมัติโดยไม่ต้องระบุ Port 8000
         const socket = io({
-        transports: ['websocket', 'polling'],
-        reconnectionAttempts: 5
+            transports: ['websocket', 'polling']
         });
 
-        // แสดงสถานะการเชื่อมต่อบน Console
+        let mySid = null;
+        let currentRoomId = null;
+        let currentTurnSid = null;
+        let activeCardNote = null;
+        let pendingRewardType = null;
+        let currentAudio = null;
+
         socket.on('connect', () => {
-            console.log('✅ Socket Connected ID:', socket.id);
             mySid = socket.id;
         });
 
-        socket.on('connect_error', (err) => {
-            console.error('❌ Socket Connection Error:', err);
-        });
+        function playNoteSound(noteName) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            currentAudio = new Audio(`/static/${noteName}.mp3`);
+            currentAudio.play().catch(e => console.log("Audio play error:", e));
+        }
+
+        function updatePlayersUI(players, turnSid) {
+            currentTurnSid = turnSid;
+            const topBar = document.getElementById('top-bar-players');
+            if (!topBar) return;
+            
+            topBar.innerHTML = '';
+            players.forEach((p) => {
+                const box = document.createElement('div');
+                box.className = 'player-score-box' + (p.sid === turnSid ? ' active-turn' : '');
+                box.innerHTML = `${p.name} : <b style="color: #ffd700;">${p.score}</b> คะแนน`;
+                topBar.appendChild(box);
+            });
+        }
 
         function startSinglePlayer() {
-            ensureAudioStarted();
-            currentMode = "single";
-            
-            // อ่านค่าจาก Input ชื่อผู้เล่น
-            const inputElem = document.getElementById('player-name-input');
-            const name = (inputElem && inputElem.value.trim()) ? inputElem.value.trim() : 'ผู้เล่น 1';
+            const playerName = document.getElementById('player-name-input').value.trim() || 'ผู้เล่น 1';
+            socket.emit('create_room', { player_name: playerName, mode: 'single' });
+        }
 
-            // ถ้า Socket ยังไม่พร้อม ให้พยายามดึง socket.id สำรอง
-            if (!socket.connected) {
-                alert('กำลังเชื่อมต่อกับ Server กรุณารอ 2-3 วินาทีแล้วลองกดอีกครั้งครับ');
-                socket.connect();
+        function createRoom() {
+            const playerName = document.getElementById('player-name-input').value.trim() || 'ผู้เล่น 1';
+            socket.emit('create_room', { player_name: playerName, mode: 'multi' });
+        }
+
+        function joinRoom() {
+            const roomCode = document.getElementById('room-code-input').value.trim().toUpperCase();
+            const playerName = document.getElementById('player-name-input').value.trim();
+            
+            if (!roomCode) {
+                alert('กรุณากรอกรหัสห้อง');
                 return;
             }
-
-            socket.emit('create_room', { player_name: name, mode: 'single' });
-        }
-        
-        const pianoSynth = new Tone.PolySynth(Tone.Synth, {
-            oscillator: { type: "triangle8" },
-            envelope: { attack: 0.005, decay: 1.2, sustain: 0.1, release: 1.2 }
-        }).toDestination();
-
-        let isPianoLoaded = false;
-        const pianoSampler = new Tone.Sampler({
-            urls: { C4: "C4.mp3", D4: "D4.mp3", E4: "E4.mp3", F4: "F4.mp3", G4: "G4.mp3", A4: "A4.mp3", B4: "B4.mp3" },
-            baseUrl: "https://tonejs.github.io/audio/salamander/",
-            onload: () => { isPianoLoaded = true; }
-        }).toDestination();
-
-        const sfxCorrect = new Tone.Synth().toDestination();
-        const sfxWrong = new Tone.MembraneSynth().toDestination();
-        const sfxFlip = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.05 } }).toDestination();
-        const sfxHover = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.02, sustain: 0, release: 0.02 } }).toDestination();
-        sfxHover.volume.value = -12;
-
-        function playHoverSFX() {
-            if (Tone.context.state === 'running') sfxHover.triggerAttackRelease("C7", "64n");
-        }
-
-        function playFlipSFX() {
-            ensureAudioStarted();
-            sfxFlip.triggerAttackRelease("C6", "32n");
-        }
-
-        function playCorrectSFX() {
-            ensureAudioStarted();
-            sfxCorrect.triggerAttackRelease("C5", "16n");
-            setTimeout(() => sfxCorrect.triggerAttackRelease("G5", "8n"), 120);
-        }
-
-        function playWrongSFX() {
-            ensureAudioStarted();
-            sfxWrong.triggerAttackRelease("G1", "8n");
-        }
-
-        function playVictorySFX() {
-            ensureAudioStarted();
-            const now = Tone.now();
-            sfxCorrect.triggerAttackRelease("C5", "8n", now);
-            sfxCorrect.triggerAttackRelease("E5", "8n", now + 0.15);
-            sfxCorrect.triggerAttackRelease("G5", "8n", now + 0.3);
-            sfxCorrect.triggerAttackRelease("C6", "4n", now + 0.45);
-        }
-
-        let currentRoomId = "";
-        let currentMode = "multi";
-        let mySid = "";
-        let activeNote = "";
-        let pendingRewardData = null;
-        let isGameOver = false;
-
-        socket.on('connect', () => { mySid = socket.id; });
-
-        function ensureAudioStarted() {
-            if (Tone.context.state !== 'running') Tone.start();
-        }
-
-        function updateLobbyPlayerName() {
-            const val = document.getElementById('player-name-input').value;
-            const p1Name = document.getElementById('lobby-p1-name');
-            if (p1Name) p1Name.innerText = val.trim() || 'ชื่อผู้เล่นที่ 1';
-        }
-
-        function startSinglePlayer() {
-            ensureAudioStarted();
-            currentMode = "single";
-            const name = document.getElementById('player-name-input').value.trim() || 'ผู้เล่น 1';
-            socket.emit('create_room', { player_name: name, mode: 'single' });
-        }
-
-        function createMultiplayerRoom() {
-            ensureAudioStarted();
-            currentMode = "multi";
-            const name = document.getElementById('player-name-input').value.trim() || 'ผู้เล่น 1';
-            socket.emit('create_room', { player_name: name, mode: 'multi' });
-        }
-
-        function joinMultiplayerRoom() {
-            ensureAudioStarted();
-            currentMode = "multi";
-            const name = document.getElementById('player-name-input').value.trim() || 'ผู้เล่น';
-            const code = document.getElementById('room-code-input').value.trim();
-            if(!code) return alert('กรุณากรอกรหัสห้อง 4 หลัก');
-            socket.emit('join_room', { player_name: name, room_id: code });
+            socket.emit('join_room', { room_id: roomCode, player_name: playerName });
         }
 
         socket.on('room_created', (data) => {
             currentRoomId = data.room_id;
             updatePlayersUI(data.players, data.current_turn_sid);
-            renderBoard(data.cards);
 
             if (data.mode === 'single') {
-                document.getElementById('lobby-screen').style.display = 'none';
-                document.getElementById('game-screen').style.display = 'flex';
-                document.getElementById('room-display-badge').innerText = 'โหมดเล่นคนเดียว';
+                document.getElementById('lobby-section').style.display = 'none';
+                document.getElementById('game-board-section').style.display = 'block';
+                renderCards(data.cards);
             } else {
-                generateQRCode(data.room_id);
-                document.getElementById('room-code-input').value = data.room_id;
-                document.getElementById('room-display-badge').innerText = `รหัสห้อง: ${data.room_id}`;
+                document.getElementById('lobby-section').style.display = 'none';
+                document.getElementById('room-info-section').style.display = 'block';
+                document.getElementById('display-room-code').innerText = data.room_id;
+                
+                const qrContainer = document.getElementById('qrcode-container');
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, {
+                    text: window.location.href,
+                    width: 150,
+                    height: 150
+                });
+                renderCards(data.cards);
             }
         });
 
         socket.on('game_started', (data) => {
             currentRoomId = data.room_id;
-            document.getElementById('lobby-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'flex';
-            document.getElementById('room-display-badge').innerText = `รหัสห้อง: ${data.room_id}`;
+            document.getElementById('lobby-section').style.display = 'none';
+            document.getElementById('room-info-section').style.display = 'none';
+            document.getElementById('game-board-section').style.display = 'block';
+
             updatePlayersUI(data.players, data.current_turn_sid);
-            renderBoard(data.cards);
+            renderCards(data.cards);
         });
 
-        function generateQRCode(roomCode) {
-            document.getElementById('lobby-qr-box').style.display = 'flex';
-            document.getElementById('lobby-room-code-text').innerText = roomCode;
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            
-            const joinUrl = `${window.location.origin}${window.location.pathname}?room=${roomCode}`;
-            new QRCode(qrContainer, {
-                text: joinUrl,
-                width: 125,
-                height: 125,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+        function renderCards(cards) {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = '';
+
+            cards.forEach((card) => {
+                const cardEl = document.createElement('div');
+                cardEl.className = 'game-card' + (card.is_opened ? ' opened' : '');
+                
+                if (card.is_opened) {
+                    cardEl.innerHTML = `<span style="font-size:24px;">${card.suit}</span><br><b>${card.note}</b>`;
+                } else {
+                    cardEl.innerHTML = `<span style="font-size:28px;">❓</span>`;
+                    cardEl.onclick = () => onCardClick(card.id);
+                }
+                grid.appendChild(cardEl);
             });
         }
 
-        function startGameNow() {
-            if(!currentRoomId) return alert('กรุณากดสร้างห้องก่อนครับ');
-            document.getElementById('lobby-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'flex';
-        }
-
-        socket.on('error_msg', (data) => { alert(data.message); });
-
-function updatePlayersUI(players, turnSid) {
-    const topBar = document.getElementById('top-bar-players');
-    if (!topBar) return;
-    
-    topBar.innerHTML = '';
-
-    players.forEach((p) => {
-        const box = document.createElement('div');
-        box.className = 'player-score-box' + (p.sid === turnSid ? ' active-turn' : '');
-        box.innerHTML = `${p.name} : <b style="color: #ffd700;">${p.score}</b> คะแนน`;
-        topBar.appendChild(box);
-    });
-}
-
-        function renderBoard(cards) {
-            const board = document.getElementById('board');
-            board.innerHTML = '';
-            cards.forEach(card => {
-                const cardDiv = document.createElement('div');
-                cardDiv.className = 'card' + (card.is_opened ? ' hidden-card' : '');
-                cardDiv.id = `card-${card.id}`;
-
-                cardDiv.addEventListener('mouseenter', () => {
-                    if (!card.is_opened) playHoverSFX();
-                });
-
-                cardDiv.addEventListener('click', () => {
-                    ensureAudioStarted();
-                    playFlipSFX();
-                    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected-touch'));
-                    cardDiv.classList.add('selected-touch');
-                    socket.emit('pick_card', { card_id: card.id, room_id: currentRoomId });
-                });
-                board.appendChild(cardDiv);
-            });
+        function onCardClick(cardId) {
+            if (currentTurnSid && mySid !== currentTurnSid) {
+                alert('ยังไม่ถึงตาของคุณครับ! กรุณารอผู้เล่นคนอื่นเล่นก่อน');
+                return;
+            }
+            socket.emit('pick_card', { card_id: cardId, room_id: currentRoomId });
         }
 
         socket.on('card_opened', (data) => {
-            const card = data.card;
-            activeNote = card.note;
-
-            document.getElementById('card-rank').innerText = card.rank;
-            document.getElementById('card-rank-sub').innerText = card.rank;
-            
-            const suitElem = document.getElementById('card-suit');
-            suitElem.innerText = card.suit;
-            suitElem.style.color = '';
-            suitElem.style.fontSize = '';
-            suitElem.style.fontWeight = '';
-            suitElem.className = 'card-center-suit ' + ((card.suit === '♥' || card.suit === '♦') ? 'red-suit' : 'black-suit');
-
-            document.getElementById('answer-message').innerText = '';
-            document.getElementById('victory-modal-ui').style.display = 'none';
-            document.getElementById('active-card-ui').style.display = 'flex';
-            document.getElementById('reward-selection-ui').style.display = 'none';
-            document.getElementById('quiz-bar-ui').style.setProperty('display', 'flex', 'important');
-            document.getElementById('overlay').style.display = 'flex';
-
-            playPianoSound(card.note);
+            activeCardNote = data.card.note;
+            playNoteSound(activeCardNote);
+            document.getElementById('answer-modal').style.display = 'flex';
         });
 
+        function replayCurrentNote() {
+            if (activeCardNote) {
+                playNoteSound(activeCardNote);
+            }
+        }
+
+        function submitAnswer(guessNote) {
+            document.getElementById('answer-modal').style.display = 'none';
+            socket.emit('submit_answer', {
+                guess: guessNote,
+                room_id: currentRoomId
+            });
+        }
+
         socket.on('answer_result', (data) => {
-            const msg = document.getElementById('answer-message');
-            const bigCard = document.getElementById('active-card-ui');
-            const suitElem = document.getElementById('card-suit');
+            updatePlayersUI(data.players, data.next_turn_sid);
+            
+            const allCardEls = document.querySelectorAll('.game-card');
+            if (allCardEls[data.removed_card_id]) {
+                allCardEls[data.removed_card_id].classList.add('opened');
+                allCardEls[data.removed_card_id].innerHTML = `<b>${data.correct_note}</b>`;
+                allCardEls[data.removed_card_id].onclick = null;
+            }
 
-            if (data.is_correct) {
-                playCorrectSFX();
-                pendingRewardData = data;
-
-                if (suitElem) {
-                    suitElem.innerText = data.correct_note;
-                    suitElem.style.color = '#d32f2f';
-                    suitElem.style.fontSize = '55px';
-                    suitElem.style.fontWeight = '600';
-                }
-
-                msg.innerHTML = '<span style="color:#00ff88; font-size: 26px;">🎉 ถูกต้อง! เก่งมาก</span>';
-                document.getElementById('quiz-bar-ui').style.display = 'none';
-
-                setTimeout(() => {
-                    bigCard.style.display = 'none';
-                    resetRewardChoices();
-                    document.getElementById('reward-selection-ui').style.display = 'flex';
-                    msg.innerHTML = '<span style="color:#ffd700;">🎁 โปรดเลือกการ์ดรางวัล 1 ใบ:</span>';
-                }, 1500);
-            } else {
-                playWrongSFX();
-                
-                if (bigCard) bigCard.classList.add('shake-card');
-
-                updatePlayersUI(data.players, data.next_turn_sid);
-                msg.innerHTML = `<span style="color:#ff4d4d; font-size: 24px;">❌ ตอบผิด! (เฉลยคือ ${data.correct_note}) โดนหัก 20 คะแนน</span>`;
-                
-                setTimeout(() => {
-                    document.getElementById('overlay').style.display = 'none';
-                    if (bigCard) bigCard.classList.remove('shake-card');
-                    if (data.removed_card_id !== undefined) {
-                        const el = document.getElementById(`card-${data.removed_card_id}`);
-                        if (el) el.classList.add('hidden-card');
-                    }
-                }, 1800);
+            if (data.is_correct && data.reward_card) {
+                pendingRewardType = data.reward_card.type;
+                document.getElementById('reward-title').innerText = data.reward_card.title;
+                document.getElementById('reward-desc').innerText = data.reward_card.desc;
+                document.getElementById('reward-modal').style.display = 'flex';
+            } else if (!data.is_correct) {
+                alert(`❌ ตอบผิด! โน้ตที่ถูกต้องคือ ${data.correct_note} (-20 คะแนน)`);
             }
         });
 
-        socket.on('game_over', (data) => {
-            isGameOver = true;
-            setTimeout(() => {
-                playVictorySFX();
-                document.getElementById('active-card-ui').style.display = 'none';
-                document.getElementById('reward-selection-ui').style.display = 'none';
-                document.getElementById('quiz-bar-ui').style.display = 'none';
-                document.getElementById('answer-message').innerText = '';
-
-                const info = data.winner_info;
-                const titleElem = document.getElementById('victory-title-text');
-                const detailElem = document.getElementById('victory-scores-detail');
-
-                if (info.type === 'single') {
-                    titleElem.innerText = "🏆 สรุปคะแนนการฝึกฟัง";
-                    detailElem.innerHTML = `<div style="font-size: 20px; color:#00ff88;">คะแนนรวมของคุณ: ${info.score} คะแนน</div>`;
-                } else if (info.type === 'win') {
-                    titleElem.innerText = `🎉 ผู้ชนะคือ ${info.winner_name}!`;
-                    detailElem.innerHTML = data.players.map(p => `<div>${p.name} : <b style="color:#ffd700;">${p.score}</b> คะแนน</div>`).join('');
-                } else {
-                    titleElem.innerText = "🤝 เสมอกัน! (DRAW)";
-                    detailElem.innerHTML = data.players.map(p => `<div>${p.name} : <b style="color:#ffd700;">${p.score}</b> คะแนน</div>`).join('');
-                }
-
-                document.getElementById('victory-modal-ui').style.display = 'flex';
-                document.getElementById('overlay').style.display = 'flex';
-            }, 300);
-        });
-
-        function requestRestartGame() {
-            socket.emit('restart_game', { room_id: currentRoomId });
-        }
-
-        socket.on('game_restarted', (data) => {
-            isGameOver = false;
-            document.getElementById('overlay').style.display = 'none';
-            document.getElementById('victory-modal-ui').style.display = 'none';
-            updatePlayersUI(data.players, data.current_turn_sid);
-            renderBoard(data.cards);
-        });
-
-        function backToLobby() { location.reload(); }
-
-        function selectRewardCard(cardIndex, cardElem) {
-            if (!pendingRewardData) return;
-
-            document.querySelectorAll('.reward-card-choice').forEach(c => c.classList.add('disabled-click'));
-
-            const reward = pendingRewardData.reward_card;
-            cardElem.style.background = 'linear-gradient(135deg, #111, #222)';
-            cardElem.style.borderColor = '#00ff88';
-            cardElem.innerHTML = `
-                <div style="font-size: 35px; margin-bottom: 5px;">✨</div>
-                <h4 style="color: #ffd700; margin-bottom: 5px;">${reward.title}</h4>
-                <p style="font-size: 12px; line-height: 1.3;">${reward.desc}</p>
-            `;
-
-            socket.emit('select_reward', { room_id: currentRoomId, reward_type: reward.type });
-            document.getElementById('answer-message').innerHTML = '<span style="color:#00ff88;">คุณได้รับผลของการ์ดรางวัลแล้ว!</span>';
-
-            setTimeout(() => {
-                if (!isGameOver) {
-                    document.getElementById('overlay').style.display = 'none';
-                }
-                if (pendingRewardData && pendingRewardData.removed_card_id !== undefined) {
-                    const el = document.getElementById(`card-${pendingRewardData.removed_card_id}`);
-                    if (el) el.classList.add('hidden-card');
-                }
-                pendingRewardData = null;
-            }, 1800);
+        function confirmReward() {
+            document.getElementById('reward-modal').style.display = 'none';
+            if (pendingRewardType) {
+                socket.emit('select_reward', {
+                    reward_type: pendingRewardType,
+                    room_id: currentRoomId
+                });
+                pendingRewardType = null;
+            }
         }
 
         socket.on('update_scores', (data) => {
             updatePlayersUI(data.players, data.next_turn_sid);
         });
 
-        function resetRewardChoices() {
-            const container = document.getElementById('reward-selection-ui');
-            container.innerHTML = `
-                <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(0, this)">
-                    <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                    <h3 style="color: #ffd700;">การ์ดใบที่ 1</h3>
-                    <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-                </div>
-                <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(1, this)">
-                    <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                    <h3 style="color: #ffd700;">การ์ดใบที่ 2</h3>
-                    <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-                </div>
-                <div class="reward-card-choice" onmouseenter="playHoverSFX()" onclick="selectRewardCard(2, this)">
-                    <div style="font-size: 40px; margin-bottom: 10px;">🎁</div>
-                    <h3 style="color: #ffd700;">การ์ดใบที่ 3</h3>
-                    <p style="font-size: 13px; margin-top: 10px;">กดเพื่อเปิดรางวัล</p>
-                </div>
-            `;
-        }
-
-        function playPianoSound(note) {
-            ensureAudioStarted();
-            if (isPianoLoaded) {
-                pianoSampler.triggerAttackRelease(note, "2n");
+        socket.on('game_over', (data) => {
+            const info = data.winner_info;
+            let msg = '';
+            if (info.type === 'single') {
+                msg = `คุณทำคะแนนได้ทั้งหมด ${info.score} คะแนน!`;
+            } else if (info.type === 'win') {
+                msg = `🎉 ผู้ชนะได้แก่: ${info.winner_name}`;
             } else {
-                pianoSynth.triggerAttackRelease(note, "2n");
+                msg = `🤝 เกมนี้เสมอกัน!`;
             }
+            document.getElementById('gameover-result-text').innerText = msg;
+            document.getElementById('gameover-modal').style.display = 'flex';
+        });
+
+        function restartGame() {
+            document.getElementById('gameover-modal').style.display = 'none';
+            socket.emit('restart_game', { room_id: currentRoomId });
         }
 
-        function playSoundAgain() {
-            if (activeNote) playPianoSound(activeNote);
-        }
+        socket.on('game_restarted', (data) => {
+            updatePlayersUI(data.players, data.current_turn_sid);
+            renderCards(data.cards);
+        });
 
-        function submitGuess(note) {
-            socket.emit('submit_answer', { guess: note, room_id: currentRoomId });
-        }
+        socket.on('error_msg', (data) => {
+            alert(data.message);
+        });
     </script>
 </body>
 </html>
