@@ -10,11 +10,13 @@ sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 app = FastAPI()
 socket_app = socketio.ASGIApp(sio, app)
 
-# 🎯 เสิร์ฟไฟล์ Static (css, js, mp3 ฯลฯ) และหน้า index.html เมื่อเข้า URL หน้าแรก
+# เสิร์ฟไฟล์ static ตรงจาก Root Directory
 app.mount("/static", StaticFiles(directory="."), name="static")
 
-@app.get("/")
-async def read_index():
+@app.get("/{filename:path}")
+async def get_static_files(filename: str):
+    if os.path.exists(filename):
+        return FileResponse(filename)
     return FileResponse("index.html")
 
 # --- โค้ดส่วนอื่นๆ คงไว้เหมือนเดิม ---
